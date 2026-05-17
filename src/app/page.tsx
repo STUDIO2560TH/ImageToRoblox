@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, Copy, CheckCircle2, Image as ImageIcon, Loader2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx, type ClassValue } from "clsx";
@@ -18,6 +18,16 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!resultId) return;
+    // Vercel serverless functions fall asleep quickly and clear memory.
+    // This ping keeps the server instance awake for as long as the webpage is open!
+    const interval = setInterval(() => {
+      fetch(`/api/image/${resultId}`, { method: 'HEAD' }).catch(() => {});
+    }, 15000);
+    return () => clearInterval(interval);
+  }, [resultId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -53,17 +63,9 @@ export default function Home() {
     }
   };
 
-  const codeSnippet = `local HttpService = game:GetService("HttpService")
-local url = "https://your-vercel-domain.vercel.app/api/image/${resultId || 'YOUR_ID'}"
-
-local response = HttpService:GetAsync(url)
-local decoded = HttpService:JSONDecode(response)
-
-print("Loaded image: " .. decoded.width .. "x" .. decoded.height)
--- Create parts or Frames based on decoded.pixels!`;
-
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(codeSnippet);
+    if (!resultId) return;
+    navigator.clipboard.writeText(resultId);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -179,20 +181,22 @@ print("Loaded image: " .. decoded.width .. "x" .. decoded.height)
                   
                   <div className="relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-pink-500/20 rounded-xl blur-md" />
-                    <div className="relative bg-black/50 border border-zinc-700 p-4 rounded-xl backdrop-blur-sm">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Roblox Lua Snippet</span>
-                        <button 
-                          onClick={copyToClipboard}
-                          className="flex items-center gap-1.5 text-xs font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-1.5 px-3 rounded-md transition-colors"
-                        >
-                          {copied ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-                          {copied ? "Copied" : "Copy"}
-                        </button>
+                    <div className="relative bg-black/50 border border-zinc-700 p-6 rounded-xl backdrop-blur-sm flex flex-col items-center justify-center">
+                      <div className="mb-4">
+                        <span className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 tracking-widest font-mono shadow-sm">
+                          {resultId}
+                        </span>
                       </div>
-                      <pre className="text-xs font-mono text-zinc-300 overflow-x-auto p-2 bg-zinc-900/50 rounded-lg whitespace-pre-wrap word-break">
-                        {codeSnippet}
-                      </pre>
+                      <button 
+                        onClick={copyToClipboard}
+                        className="flex items-center justify-center w-full max-w-[200px] gap-2 text-sm font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 py-3 px-4 rounded-xl transition-all active:scale-95"
+                      >
+                        {copied ? <CheckCircle2 className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
+                        {copied ? "Code Copied!" : "Copy Code"}
+                      </button>
+                      <p className="mt-4 text-zinc-500 text-xs text-center">
+                        Players can type this exact code into your game UI!
+                      </p>
                     </div>
                   </div>
                 </motion.div>

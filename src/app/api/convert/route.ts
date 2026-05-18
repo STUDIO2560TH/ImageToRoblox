@@ -16,31 +16,32 @@ export async function POST(req: Request) {
     // Read the image using Jimp
     let image = await Jimp.read(buffer as any);
     
-    // For Roblox, sending huge arrays can crash HttpService or exceed Vercel's response size limit.
-    // If the image is extremely large, shrink it slightly.
-    if (image.bitmap.width > 256 || image.bitmap.height > 256) {
-      if (typeof image.resize === 'function') {
+    // Force resize to exactly 200x200 to match Python conversion logic
+    if (typeof image.resize === 'function') {
+      try {
+        // Attempt v1 syntax
+        image.resize({ w: 200, h: 200 });
+      } catch(e) {
         try {
-          // Attempt v1 syntax
-          image.resize({ w: 256 });
-        } catch(e) {
-          try {
-             // Attempt v0 syntax fallback
-             (image as any).resize(256, (Jimp as any).AUTO);
-          } catch(err) {} 
-        }
+           // Attempt v0 syntax fallback
+           (image as any).resize(200, 200);
+        } catch(err) {} 
       }
     }
 
     const { width, height, data } = image.bitmap;
-    // data is a Buffer containing r, g, b, a, r, g, b, a...
-    // converting it to an array of integers
-    const pixels = Array.from(data);
+    
+    // Format bytes as \xHH string
+    const hexArray = new Array(data.length);
+    for (let i = 0; i < data.length; i++) {
+        hexArray[i] = "\\x" + data[i].toString(16).padStart(2, '0').toUpperCase();
+    }
+    const hex_string = hexArray.join("");
 
     // Generate a short ID
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
     
-    imageCache.set(id, { width, height, pixels });
+    imageCache.set(id, { width, height, pixels: hex_string });
 
     // Basic map cleanup to avoid blowing out memory
     if (imageCache.size > 100) {

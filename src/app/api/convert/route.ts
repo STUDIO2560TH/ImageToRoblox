@@ -31,17 +31,13 @@ export async function POST(req: Request) {
 
     const { width, height, data } = image.bitmap;
     
-    // Format bytes as \xHH string
-    const hexArray = new Array(data.length);
-    for (let i = 0; i < data.length; i++) {
-        hexArray[i] = "\\x" + data[i].toString(16).padStart(2, '0').toUpperCase();
-    }
-    const hex_string = hexArray.join("");
+    // Store as plain array of integers for Roblox JSON parser
+    const pixelArray = Array.from(data);
 
     // Generate a short ID
     const id = Math.random().toString(36).substring(2, 8).toUpperCase();
     
-    imageCache.set(id, { width, height, pixels: hex_string });
+    imageCache.set(id, { width, height, pixels: pixelArray });
 
     // Basic map cleanup to avoid blowing out memory
     if (imageCache.size > 100) {

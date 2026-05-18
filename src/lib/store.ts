@@ -1,7 +1,7 @@
 export interface ImageData {
   width: number;
   height: number;
-  pixels: string;
+  pixels: number[];
 }
 
 const globalForStore = globalThis as unknown as { __imageCache: Map<string, ImageData> };
